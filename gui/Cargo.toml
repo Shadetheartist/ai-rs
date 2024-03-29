@@ -1,0 +1,20 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = {version="0.26.2", features = ["persistence"]}
+petgraph = "0.6.4"
+eframe = { version = "0.26.2", features = [ "default", "__screenshot", ] }
+egui_extras = { features = ["default", "image"] }
+egui_graphs = { version = "0", features = ["egui_persistence"]}
+egui_plot = "0.26.2"
+env_logger = { version = "0.11.2", default-features = false, features = [ "auto-color", "humantime", ] }
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = {version = "1.0.114"}
+anyhow = "1.0.80"
+coup-rs = { path = "../../coup-rs"}
+mcts = {path="../mcts"}
