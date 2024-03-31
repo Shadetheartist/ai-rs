@@ -1633,7 +1633,6 @@ dependencies = [
  "egui_graphs",
  "egui_plot",
  "env_logger",
- "mcts",
  "petgraph",
  "serde",
  "serde_json",
