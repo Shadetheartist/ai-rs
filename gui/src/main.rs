@@ -1,7 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use coup_rs::ai::{GraphEdge, SimParams, SimPlayerParams};
-use coup_rs::{GraphNode};
 use eframe::egui;
 use eframe::emath::Pos2;
 use egui::ahash::HashMap;
@@ -32,12 +30,13 @@ fn main() -> Result<(), eframe::Error> {
 #[derive(Clone)]
 struct MCTSPlayerParams {
     enabled: bool,
-    params: SimPlayerParams,
+    num_determinations: usize,
+    num_simulations_per_action: usize,
 }
 
 struct MTCTSweepDatum {
     sweep_index: usize,
-    sim_params: SimParams,
+    sim_params: MCTSPlayerParams,
     winners: Vec<(usize, i32)>
 }
 

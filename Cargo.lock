@@ -859,6 +859,7 @@ name = "coup-rs"
 version = "0.1.0"
 dependencies = [
  "csv",
+ "mcts",
  "petgraph",
  "rand",
  "rand_pcg",

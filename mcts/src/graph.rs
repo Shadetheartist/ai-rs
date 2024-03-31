@@ -1,10 +1,9 @@
 use std::hash::Hash;
 use petgraph::{Directed, Graph};
 use petgraph::stable_graph::NodeIndex;
-use rand::{Rng, SeedableRng};
-use rand_pcg::Pcg64;
+use rand::{Rng, RngCore, SeedableRng};
 use crate::ismcts::{ismcts, ISMCTSParams};
-use crate::mcts::Mcts;
+use crate::mcts::{Determinable, Mcts};
 
 
 pub trait Graphable {
@@ -60,26 +59,26 @@ fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     }
 }
 
-pub trait Initializer<'p, P, A: Send, S: Mcts<'p, P, A>> {
+pub trait Initializer<P, A: Send, S: Mcts<P, A>> {
     fn initialize<R: Rng + Sized>(&self, r: &mut R) -> S;
 }
 
 #[allow(dead_code)]
 pub fn generate_graph<
-    'p,
-    S: Clone + Eq + PartialEq + Mcts<'p, P, A> + Send,
+    P: Eq + PartialEq + Hash + Send + Sync,
     A: Clone + Eq + PartialEq + Hash + Send + Sync,
-    P: 'p + Eq + PartialEq + Hash + Send + Sync,
-    I: Initializer<'p, P, A, S>
->(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<S>, GraphEdge<A>, Directed> {
-    let mut graph: Graph<GraphNode<S>, GraphEdge<A>, Directed> = Graph::new();
-    let mut nodes: Vec<(NodeIndex, &S)> = Vec::new();
+    R: Rng + RngCore + Sized + Clone + Send + SeedableRng,
+    G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G, R>,
+    I: Initializer<P, A, G>
+>(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<G>, GraphEdge<A>, Directed> {
+    let mut graph: Graph<GraphNode<G>, GraphEdge<A>, Directed> = Graph::new();
+    let mut nodes: Vec<(NodeIndex, &G)> = Vec::new();
 
 
 
     for sim_n in 0..sim_params.num_sims {
-        let mut not_rng = Pcg64::seed_from_u64(sim_params.seed);
-        let mut per_sim_rng = Pcg64::seed_from_u64(sim_params.seed + (sim_n as u64));
+        let mut not_rng = R::seed_from_u64(sim_params.seed);
+        let mut per_sim_rng = R::seed_from_u64(sim_params.seed + (sim_n as u64));
 
         let game = initializer.initialize(&mut not_rng);
         let players = game.players();
@@ -97,7 +96,7 @@ pub fn generate_graph<
 
             let prev_node_idx = nodes.last().unwrap().0;
 
-            let game = game.apply_action(&ai_selected_action, &mut per_sim_rng).unwrap();
+            let game = game.apply_action(ai_selected_action.clone(), &mut per_sim_rng).unwrap();
 
             let new_node_idx = add_state_to_graph(&mut graph, &mut nodes, &game);
             add_action_to_graph(&mut graph, ai_selected_action, prev_node_idx, new_node_idx);

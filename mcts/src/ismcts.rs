@@ -7,18 +7,15 @@ use crate::mcts::{Determinable, Outcome};
 use crate::mcts::Mcts;
 use crate::mcts::random_rollout;
 
-type Determinizations<'p, 'a, A, P> = Vec<HashMap<&'a A, HashMap<&'p P, f64>>>;
+type Determinizations<A, P> = Vec<HashMap<A, HashMap<P, f64>>>;
 
 #[allow(dead_code)]
 pub fn ismcts<
-    'p,
-    'r,
-    'g,
     R: Rng + RngCore + Sized + Clone + Send,
-    P: 'p + Eq + PartialEq + Hash + Send + Sync ,
+    P: Eq + PartialEq + Hash + Send + Sync ,
     A: Eq + PartialEq + Hash + Clone + Send + Sync,
-    G: Mcts<'p, P, A> + Determinable<'p, 'r, P, A, G, R> + Send
->(game: &'g G, rng: &'r R, num_determinizations: usize, num_simulations: usize) -> A {
+    G: Mcts<P, A> + Determinable<P, A, G, R> + Send
+>(game: &G, rng: &R, num_determinizations: usize, num_simulations: usize) -> A {
 
     // actions should be the same between all determinizations
     // so, we can pre-calculate the actions, then just copy them into each thread
@@ -30,6 +27,8 @@ pub fn ismcts<
     thread::scope(|scope| {
         for determinization_idx in 0..num_determinizations {
             {
+                let actions = actions.clone();
+
                 let mut rng = clone_and_advance_rng(rng, determinization_idx);
 
                 let determinization_scores = determinization_scores.clone();
@@ -39,12 +38,12 @@ pub fn ismcts<
                 let game = game.determine(&mut rng, current_player);
 
                 scope.spawn(move || {
-                    let mut action_scores: HashMap<&A, HashMap<&'p P, f64>> = HashMap::new();
+                    let mut action_scores: HashMap<A, HashMap<P, f64>> = HashMap::new();
 
                     for action in actions.iter() {
-                        let game_after_action = game.apply_action(action, &mut rng).unwrap();
+                        let game_after_action = game.apply_action(action.clone(), &mut rng).unwrap();
 
-                        let mut scores: HashMap<&'p P, f64> = HashMap::new();
+                        let mut scores: HashMap<P, f64> = HashMap::new();
                         for _simulation_count in 0..num_simulations {
                             let outcome = random_rollout(&game_after_action, &mut rng);
 
@@ -60,7 +59,7 @@ pub fn ismcts<
                         let max = scores.values().fold(0f64, |sum, &val| if sum > val { sum } else { val });
                         scores.iter_mut().for_each(|(_, v)| *v /= max);
 
-                        action_scores.insert(action, scores);
+                        action_scores.insert(action.clone(), scores);
                     }
 
                     determinization_scores.lock().unwrap().push(action_scores);
@@ -95,7 +94,7 @@ pub fn ismcts<
         b.1.partial_cmp(&a.1).unwrap()
     });
     */
-    actions[0].clone()
+    game.actions()[0].clone()
 }
 
 fn clone_and_advance_rng<R: Rng + RngCore + Sized + Clone + Send>(rng: &R, delta: usize) -> R {

@@ -1,6 +1,6 @@
 #[allow(dead_code)]
-pub enum Outcome<'p, P> {
-    Winner(&'p P),
-    Winners(Vec<&'p P>),
+pub enum Outcome<P> {
+    Winner(P),
+    Winners(Vec<P>),
     Escape(String)
 }

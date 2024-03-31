@@ -6,9 +6,9 @@ pub fn random_rollout<
     'p,
     R: Rng + Sized,
     P,
-    A: Send,
-    G: Mcts<'p, P, A> + Clone
->(game: &G, rng: &mut R) -> Outcome<'p, P> {
+    A: Send + Clone,
+    G: Mcts<P, A> + Clone
+>(game: &G, rng: &mut R) -> Outcome<P> {
     let mut game = game.clone();
 
     loop {
@@ -16,11 +16,11 @@ pub fn random_rollout<
             return outcome;
         }
 
-        let actions = game.actions();
+        let actions = &game.actions()[..];
         let random_action = rand::seq::SliceRandom::choose(actions, rng);
 
         if let Some(action) = random_action {
-            game = game.apply_action(action, rng).unwrap();
+            game = game.apply_action((*action).clone(), rng).unwrap();
         } else {
             return Outcome::Escape("No actions available.".to_string());
         }
