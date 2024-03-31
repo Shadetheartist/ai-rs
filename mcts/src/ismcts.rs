@@ -4,8 +4,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use rand::{Rng, RngCore};
 use crate::mcts::{Determinable, Outcome};
-use crate::mcts::MCTS;
+use crate::mcts::Mcts;
 use crate::mcts::random_rollout;
+
+type Determinizations<'p, 'a, A, P> = Vec<HashMap<&'a A, HashMap<&'p P, f64>>>;
 
 #[allow(dead_code)]
 pub fn ismcts<
@@ -15,7 +17,7 @@ pub fn ismcts<
     R: Rng + RngCore + Sized + Clone + Send,
     P: 'p + Eq + PartialEq + Hash + Send + Sync ,
     A: Eq + PartialEq + Hash + Clone + Send + Sync,
-    G: MCTS<'p, P, A> + Determinable<'p, 'r, P, A, G, R> + Send
+    G: Mcts<'p, P, A> + Determinable<'p, 'r, P, A, G, R> + Send
 >(game: &'g G, rng: &'r R, num_determinizations: usize, num_simulations: usize) -> A {
 
     // actions should be the same between all determinizations
@@ -23,7 +25,7 @@ pub fn ismcts<
     let actions = game.actions();
 
     // yikes type
-    let determinization_scores: Arc<Mutex<Vec<HashMap<&A, HashMap<&P, f64>>>>> = Arc::new(Mutex::new(Vec::new()));
+    let determinization_scores: Arc<Mutex<Determinizations<A, P>>> = Arc::new(Mutex::new(Vec::new()));
 
     thread::scope(|scope| {
         for determinization_idx in 0..num_determinizations {

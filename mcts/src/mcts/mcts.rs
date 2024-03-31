@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use rand::Rng;
 use crate::mcts::Outcome;
 
-pub trait MCTS<'p, P, A: Send>: Clone {
+pub trait Mcts<'p, P, A: Send>: Clone {
     type Error: Debug;
 
     fn actions(&self) -> &[A];

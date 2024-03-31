@@ -1,5 +1,5 @@
 use rand::Rng;
-use crate::mcts::MCTS;
+use crate::mcts::Mcts;
 use crate::mcts::Outcome;
 
 pub fn random_rollout<
@@ -7,7 +7,7 @@ pub fn random_rollout<
     R: Rng + Sized,
     P,
     A: Send,
-    G: MCTS<'p, P, A> + Clone
+    G: Mcts<'p, P, A> + Clone
 >(game: &G, rng: &mut R) -> Outcome<'p, P> {
     let mut game = game.clone();
 

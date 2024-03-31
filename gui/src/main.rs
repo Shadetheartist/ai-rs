@@ -66,7 +66,7 @@ impl MCTSExplorer {
 
     fn graph_winners(&self) -> Option<Vec<(usize, i32)>> {
         if let Some(graph) = &self.graph {
-            let default_map = (0..self.sim_params().sim_players.len()).into_iter().fold(HashMap::default(), |mut acc, n| {
+            let default_map = (0..self.sim_params().sim_players.len()).fold(HashMap::default(), |mut acc, n| {
                 acc.insert(n, 0);
                 acc
             });
@@ -140,7 +140,7 @@ impl MCTSExplorer {
             self.graph = Some(self.coup_graph());
             data.push(MTCTSweepDatum {
                 sweep_index: idx,
-                sim_params: sim_params,
+                sim_params,
                 winners: self.graph_winners().unwrap(),
             });
         }
@@ -299,9 +299,9 @@ impl eframe::App for MCTSExplorer {
                     }
 
                     for datum in sweep_data {
-                        for player_idx in 0..datum.sim_params.sim_players.len() {
+                        for (player_idx, points) in player_line_points.iter_mut().enumerate().take(datum.sim_params.sim_players.len()) {
                             let wins = datum.winners.iter().find(|w|w.0 == player_idx).unwrap().1;
-                            player_line_points[player_idx].push([datum.sweep_index as f64, wins as f64]);
+                            points.push([datum.sweep_index as f64, wins as f64]);
                         }
                     }
 

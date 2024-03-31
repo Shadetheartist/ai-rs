@@ -4,7 +4,7 @@ use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use crate::ismcts::{ismcts, ISMCTSParams};
-use crate::mcts::MCTS;
+use crate::mcts::Mcts;
 
 
 pub trait Graphable {
@@ -25,7 +25,7 @@ pub struct GraphEdge<A: Clone + Eq + PartialEq> {
 #[allow(dead_code)]
 fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     graph: &mut Graph<GraphNode<S>, GraphEdge<A>, Directed>,
-    nodes: &mut Vec<(NodeIndex, &S)>,
+    nodes: &mut [(NodeIndex, &S)],
     state: &S,
 ) -> NodeIndex {
     let node = GraphNode {
@@ -54,20 +54,20 @@ fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     let existing_edge = graph.find_edge(prev_state_idx, new_state_idx);
     if let Some(existing_edge) = existing_edge {
         let edge = graph.edge_weight(existing_edge).unwrap();
-        graph.update_edge(prev_state_idx, new_state_idx, GraphEdge { action: action, count: edge.count + 1 });
+        graph.update_edge(prev_state_idx, new_state_idx, GraphEdge { action, count: edge.count + 1 });
     } else {
-        graph.add_edge(prev_state_idx, new_state_idx, GraphEdge { action: action, count: 1 });
+        graph.add_edge(prev_state_idx, new_state_idx, GraphEdge { action, count: 1 });
     }
 }
 
-pub trait Initializer<'p, P, A: Send, S: MCTS<'p, P, A>> {
+pub trait Initializer<'p, P, A: Send, S: Mcts<'p, P, A>> {
     fn initialize<R: Rng + Sized>(&self, r: &mut R) -> S;
 }
 
 #[allow(dead_code)]
 pub fn generate_graph<
     'p,
-    S: Clone + Eq + PartialEq + MCTS<'p, P, A> + Send,
+    S: Clone + Eq + PartialEq + Mcts<'p, P, A> + Send,
     A: Clone + Eq + PartialEq + Hash + Send + Sync,
     P: 'p + Eq + PartialEq + Hash + Send + Sync,
     I: Initializer<'p, P, A, S>
@@ -93,7 +93,7 @@ pub fn generate_graph<
         loop {
             let current_player_idx = players.iter().enumerate().find(|(_, p)| **p == game.current_player()).unwrap().0;
             let sim_player = &sim_params.sim_players[current_player_idx];
-            let ai_selected_action = ismcts(&game, &mut per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
+            let ai_selected_action = ismcts(&game, &per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
 
             let prev_node_idx = nodes.last().unwrap().0;
 
@@ -104,7 +104,7 @@ pub fn generate_graph<
 
             step += 1;
 
-            if let Some(_) = game.outcome() {
+            if game.outcome().is_some() {
                 break;
             }
         }
