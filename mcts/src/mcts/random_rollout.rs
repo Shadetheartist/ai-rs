@@ -3,7 +3,6 @@ use crate::mcts::Mcts;
 use crate::mcts::Outcome;
 
 pub fn random_rollout<
-    'p,
     R: Rng + Sized,
     P,
     A: Send + Clone,

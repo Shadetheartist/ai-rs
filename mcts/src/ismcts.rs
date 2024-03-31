@@ -3,9 +3,13 @@ use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use rand::{Rng, RngCore};
-use crate::mcts::{Determinable, Outcome};
+use crate::mcts::{Outcome};
 use crate::mcts::Mcts;
 use crate::mcts::random_rollout;
+
+pub trait Determinable<P, A, G: Mcts<P, A>, R: Rng + Sized> {
+    fn determine(&self, rng: &mut R, perspective_player: P) -> G;
+}
 
 type Determinizations<A, P> = Vec<HashMap<A, HashMap<P, f64>>>;
 

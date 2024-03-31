@@ -2,13 +2,9 @@ use std::hash::Hash;
 use petgraph::{Directed, Graph};
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, RngCore, SeedableRng};
+use crate::Determinable;
 use crate::ismcts::{ismcts, ISMCTSParams};
-use crate::mcts::{Determinable, Mcts};
-
-
-pub trait Graphable {
-
-}
+use crate::mcts::{Mcts};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GraphNode<S: Clone + Eq + PartialEq> {
@@ -70,11 +66,10 @@ pub fn generate_graph<
     R: Rng + RngCore + Sized + Clone + Send + SeedableRng,
     G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G, R>,
     I: Initializer<P, A, G>
->(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<G>, GraphEdge<A>, Directed> {
+>
+(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<G>, GraphEdge<A>, Directed> {
     let mut graph: Graph<GraphNode<G>, GraphEdge<A>, Directed> = Graph::new();
     let mut nodes: Vec<(NodeIndex, &G)> = Vec::new();
-
-
 
     for sim_n in 0..sim_params.num_sims {
         let mut not_rng = R::seed_from_u64(sim_params.seed);
@@ -82,6 +77,7 @@ pub fn generate_graph<
 
         let game = initializer.initialize(&mut not_rng);
         let players = game.players();
+
         #[allow(unused_variables)]
         let mut step = 0usize;
 

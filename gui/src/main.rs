@@ -34,25 +34,31 @@ struct MCTSPlayerParams {
     num_simulations_per_action: usize,
 }
 
+struct MCTSParams {
+    seed: u64,
+    num_sims: usize,
+    sim_players: Vec<MCTSPlayerParams>,
+}
+
 struct MTCTSweepDatum {
     sweep_index: usize,
     sim_params: MCTSPlayerParams,
-    winners: Vec<(usize, i32)>
+    winners: Vec<(usize, i32)>,
 }
 
-struct MCTSExplorer {
+struct MCTSExplorer<S, A> {
     selected_node_idx: Option<NodeIndex>,
     seed: u64,
     num_sims: usize,
     params: Vec<MCTSPlayerParams>,
-    graph: Option<Graph<GraphNode, GraphEdge, Directed>>,
+    graph: Option<Graph<S, A, Directed>>,
     show_graph: bool,
-    sweep_data: Option<Vec<MTCTSweepDatum>>
+    sweep_data: Option<Vec<MTCTSweepDatum>>,
 }
 
-impl MCTSExplorer {
-    fn sim_params(&self) -> SimParams {
-        SimParams {
+impl<S, A> MCTSExplorer<S, A> {
+    fn sim_params(&self) -> MCTSParams {
+        MCTSParams {
             seed: self.seed,
             num_sims: self.num_sims,
             sim_players: self.params
@@ -89,8 +95,8 @@ impl MCTSExplorer {
         }
     }
 
-    fn coup_graph(&self) -> Graph<GraphNode, GraphEdge, Directed> {
-        let game_graph = coup_rs::generate_graph(self.sim_params());
+    fn coup_graph(&self) -> Graph<S, A, Directed> {
+        let game_graph = mcts::generate_graph();
         let mut graph = Graph::from(&game_graph);
 
         let node_indexes: Vec<NodeIndex> = graph.nodes_iter().map(|n| n.0).collect();
@@ -161,45 +167,33 @@ impl Default for MCTSExplorer {
             params: vec![
                 MCTSPlayerParams {
                     enabled: true,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
                 MCTSPlayerParams {
                     enabled: true,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
                 MCTSPlayerParams {
                     enabled: true,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
                 MCTSPlayerParams {
                     enabled: false,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
                 MCTSPlayerParams {
                     enabled: false,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
                 MCTSPlayerParams {
                     enabled: false,
-                    params: SimPlayerParams {
-                        num_determinations: 1,
-                        num_simulations_per_action: 1,
-                    },
+                    num_determinations: 1,
+                    num_simulations_per_action: 1,
                 },
             ],
             graph: None,
@@ -299,7 +293,7 @@ impl eframe::App for MCTSExplorer {
 
                     for datum in sweep_data {
                         for (player_idx, points) in player_line_points.iter_mut().enumerate().take(datum.sim_params.sim_players.len()) {
-                            let wins = datum.winners.iter().find(|w|w.0 == player_idx).unwrap().1;
+                            let wins = datum.winners.iter().find(|w| w.0 == player_idx).unwrap().1;
                             points.push([datum.sweep_index as f64, wins as f64]);
                         }
                     }
