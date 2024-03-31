@@ -1,9 +1,9 @@
 use petgraph::{Directed, Graph};
 use petgraph::stable_graph::NodeIndex;
-use petgraph::visit::NodeRef;
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use crate::ismcts::{ismcts, ISMCTSParams};
+use crate::mcts::MCTS;
 
 
 pub trait Graphable {
@@ -58,11 +58,16 @@ fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     }
 }
 
-pub trait Initializer<S> {
-    fn initialize<R: Rng + Sized>() -> S;
+pub trait Initializer<'p, P, A: Send, S: MCTS<'p, P, A>> {
+    fn initialize<R: Rng + Sized>(&self, r: &mut R) -> S;
 }
 
-pub fn generate_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq, I: Initializer<S>>(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<S>, GraphEdge<A>, Directed> {
+pub fn generate_graph<'p,
+    S: Clone + Eq + PartialEq + MCTS<'p, P, A>,
+    A: Clone + Eq + PartialEq + Send,
+    P,
+    I: Initializer<'p, P, A, S>
+>(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<S>, GraphEdge<A>, Directed> {
     let mut graph: Graph<GraphNode<S>, GraphEdge<A>, Directed> = Graph::new();
     let mut nodes: Vec<(NodeIndex, &S)> = Vec::new();
 
@@ -73,12 +78,12 @@ pub fn generate_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq, I: I
         let mut game_state = initializer.initialize(&mut not_rng);
         let mut step = 0usize;
 
-        add_state_to_graph(&mut graph, &game_state, &nodes);
+        add_state_to_graph(&mut graph, &mut nodes, &game_state);
 
         step += 1;
 
         loop {
-            let sim_player = &sim_params.sim_players[game_state.current_player_idx];
+            let sim_player = &sim_params.sim_players[game_state.current_player()];
             let ai_selected_action = ismcts(&game_state, &mut per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
 
             let prev_node_idx = nodes.last().unwrap().0;

@@ -1,22 +1,19 @@
 use rand::Rng;
 use crate::mcts::MCTS;
-use crate::mcts::Termination;
+use crate::mcts::Outcome;
 
 pub fn random_rollout<
     'p,
     R: Rng + Sized,
     P,
-    A,
-    G: MCTS<'p, A, P> + Clone
->(game: &G, rng: &mut R) -> &'p P {
+    A: Send,
+    G: MCTS<'p, P, A> + Clone
+>(game: &G, rng: &mut R) -> Outcome<'p, P> {
     let mut game = game.clone();
 
     loop {
-        if let Some(termination) = game.terminal() {
-            match termination {
-                Termination::Winner(player) => return player,
-                Termination::Escape => {}
-            }
+        if let Some(outcome) = game.outcome() {
+            return outcome;
         }
 
         let mut actions = game.actions();

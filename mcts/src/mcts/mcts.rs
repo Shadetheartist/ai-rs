@@ -1,12 +1,14 @@
+use std::fmt::Debug;
 use rand::Rng;
-use crate::mcts::Termination;
+use crate::mcts::Outcome;
 
-pub trait MCTS<'p, P, A> {
-    type Player;
-    type Action;
-    type Error;
-    fn current_player(&self) -> &'p P;
+pub trait MCTS<'p, P, A: Send>: Clone {
+    type Error: Debug;
+
     fn actions(&self) -> &[A];
-    fn apply_action<R: Rng + Sized>(&self, action: &A, rng: &mut R) -> Result<Self, Self::Error>;
-    fn terminal(&self) -> Option<Termination<'p, P>>;
+    fn apply_action<R: Rng + Sized>(&self, action: &A, rng: &mut R) -> Result<Self, Self::Error> where Self: Sized;
+    fn outcome(&self) -> Option<Outcome<'p, P>>;
+
+    fn current_player(&self) -> &'p P;
+    fn players(&self) -> &[&'p P];
 }
