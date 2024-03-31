@@ -16,12 +16,14 @@ pub fn random_rollout<
             return outcome;
         }
 
-        let mut actions = game.actions();
+        let actions = game.actions();
+        let random_action = rand::seq::SliceRandom::choose(actions, rng);
 
-        let random_index = rng.gen_range(0..actions.len());
+        if let Some(action) = random_action {
+            game = game.apply_action(action, rng).unwrap();
+        } else {
+            return Outcome::Escape("No actions available.".to_string());
+        }
 
-        let random_action = actions.remove(random_index);
-
-        game = game.apply_action(random_action, rng).unwrap();
     }
 }

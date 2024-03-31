@@ -7,17 +7,13 @@ use crate::mcts::{Determinable, Outcome};
 use crate::mcts::MCTS;
 use crate::mcts::random_rollout;
 
-
-struct Determinization {
-
-}
-
+#[allow(dead_code)]
 pub fn ismcts<
     'p,
     'r,
     'g,
     R: Rng + RngCore + Sized + Clone + Send,
-    P: Eq + PartialEq + Hash + Send + Sync,
+    P: 'p + Eq + PartialEq + Hash + Send + Sync ,
     A: Eq + PartialEq + Hash + Clone + Send + Sync,
     G: MCTS<'p, P, A> + Determinable<'p, 'r, P, A, G, R> + Send
 >(game: &'g G, rng: &'r R, num_determinizations: usize, num_simulations: usize) -> A {
@@ -34,8 +30,6 @@ pub fn ismcts<
             {
                 let mut rng = clone_and_advance_rng(rng, determinization_idx);
 
-                let actions = actions.clone();
-
                 let determinization_scores = determinization_scores.clone();
 
                 let current_player = game.current_player();
@@ -45,7 +39,7 @@ pub fn ismcts<
                 scope.spawn(move || {
                     let mut action_scores: HashMap<&A, HashMap<&'p P, f64>> = HashMap::new();
 
-                    for (_, action) in actions.iter().enumerate() {
+                    for action in actions.iter() {
                         let game_after_action = game.apply_action(action, &mut rng).unwrap();
 
                         let mut scores: HashMap<&'p P, f64> = HashMap::new();
@@ -57,12 +51,12 @@ pub fn ismcts<
                                     *scores.entry(winner).or_insert(0f64) += 1f64;
                                 }
                                 Outcome::Winners(_) => unimplemented!(),
-                                Outcome::Escape => {}
+                                Outcome::Escape(_) => {}
                             }
                         }
 
                         let max = scores.values().fold(0f64, |sum, &val| if sum > val { sum } else { val });
-                        scores.iter_mut().for_each(|(p, v)| *v = *v / max);
+                        scores.iter_mut().for_each(|(_, v)| *v /= max);
 
                         action_scores.insert(action, scores);
                     }

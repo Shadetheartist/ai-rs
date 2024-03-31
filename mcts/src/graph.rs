@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use petgraph::{Directed, Graph};
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, SeedableRng};
@@ -21,7 +22,7 @@ pub struct GraphEdge<A: Clone + Eq + PartialEq> {
     pub action: A,
 }
 
-
+#[allow(dead_code)]
 fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     graph: &mut Graph<GraphNode<S>, GraphEdge<A>, Directed>,
     nodes: &mut Vec<(NodeIndex, &S)>,
@@ -43,6 +44,7 @@ fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     node_index
 }
 
+#[allow(dead_code)]
 fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     graph: &mut Graph<GraphNode<S>, GraphEdge<A>, Directed>,
     action: A,
@@ -62,40 +64,47 @@ pub trait Initializer<'p, P, A: Send, S: MCTS<'p, P, A>> {
     fn initialize<R: Rng + Sized>(&self, r: &mut R) -> S;
 }
 
-pub fn generate_graph<'p,
-    S: Clone + Eq + PartialEq + MCTS<'p, P, A>,
-    A: Clone + Eq + PartialEq + Send,
-    P,
+#[allow(dead_code)]
+pub fn generate_graph<
+    'p,
+    S: Clone + Eq + PartialEq + MCTS<'p, P, A> + Send,
+    A: Clone + Eq + PartialEq + Hash + Send + Sync,
+    P: 'p + Eq + PartialEq + Hash + Send + Sync,
     I: Initializer<'p, P, A, S>
 >(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<S>, GraphEdge<A>, Directed> {
     let mut graph: Graph<GraphNode<S>, GraphEdge<A>, Directed> = Graph::new();
     let mut nodes: Vec<(NodeIndex, &S)> = Vec::new();
 
+
+
     for sim_n in 0..sim_params.num_sims {
         let mut not_rng = Pcg64::seed_from_u64(sim_params.seed);
         let mut per_sim_rng = Pcg64::seed_from_u64(sim_params.seed + (sim_n as u64));
 
-        let mut game_state = initializer.initialize(&mut not_rng);
+        let game = initializer.initialize(&mut not_rng);
+        let players = game.players();
+        #[allow(unused_variables)]
         let mut step = 0usize;
 
-        add_state_to_graph(&mut graph, &mut nodes, &game_state);
+        add_state_to_graph(&mut graph, &mut nodes, &game);
 
         step += 1;
 
         loop {
-            let sim_player = &sim_params.sim_players[game_state.current_player()];
-            let ai_selected_action = ismcts(&game_state, &mut per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
+            let current_player_idx = players.iter().enumerate().find(|(_, p)| **p == game.current_player()).unwrap().0;
+            let sim_player = &sim_params.sim_players[current_player_idx];
+            let ai_selected_action = ismcts(&game, &mut per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
 
             let prev_node_idx = nodes.last().unwrap().0;
 
-            game_state = game_state.apply_action(ai_selected_action.clone(), &mut per_sim_rng).unwrap();
+            let game = game.apply_action(&ai_selected_action, &mut per_sim_rng).unwrap();
 
-            let new_node_idx = add_state_to_graph(&mut graph, &game_state);
-            add_action_to_graph(&mut graph, ai_selected_action.clone(), prev_node_idx, new_node_idx);
+            let new_node_idx = add_state_to_graph(&mut graph, &mut nodes, &game);
+            add_action_to_graph(&mut graph, ai_selected_action, prev_node_idx, new_node_idx);
 
             step += 1;
 
-            if let Some(_winner) = game_state.winner() {
+            if let Some(_) = game.outcome() {
                 break;
             }
         }

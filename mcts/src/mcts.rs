@@ -14,7 +14,7 @@ pub trait Determinable<'p, 'r, P, A: Send, G: MCTS<'p, P, A>, R: Rng + Sized> {
 
 // extension trait design pattern
 impl <'p, 'r, P, A: Send, G: MCTS<'p, P, A>, R: Rng + Sized> Determinable<'p, 'r, P, A, G, R> for G {
-    fn determine(&self, rng: &mut R, perspective_player: &'p P) -> G {
+    fn determine(&self, _rng: &mut R, _perspective_player: &'p P) -> G {
         todo!()
     }
 }
