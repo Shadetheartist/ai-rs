@@ -2,8 +2,8 @@ use std::hash::Hash;
 use petgraph::{Directed, Graph};
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, RngCore, SeedableRng};
-use crate::Determinable;
-use crate::ismcts::{ismcts, ISMCTSParams};
+use crate::{Determinable, ismcts_mt};
+use crate::ismcts::{ISMCTSParams};
 use crate::mcts::{Mcts};
 
 #[derive(Clone, Eq, PartialEq)]
@@ -88,7 +88,7 @@ pub fn generate_graph<
         loop {
             let current_player_idx = players.iter().enumerate().find(|(_, p)| **p == game.current_player()).unwrap().0;
             let sim_player = &sim_params.sim_players[current_player_idx];
-            let ai_selected_action = ismcts(&game, &per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
+            let ai_selected_action = ismcts_mt(&game, &per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
 
             let prev_node_idx = nodes.last().unwrap().0;
 

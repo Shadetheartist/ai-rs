@@ -13,11 +13,12 @@ pub trait Determinable<P, A, G: Mcts<P, A>, R: Rng + Sized> {
 
 type Determinizations<A, P> = Vec<HashMap<A, HashMap<P, f64>>>;
 
+
 #[allow(dead_code)]
-pub fn ismcts<
+pub fn ismcts_mt<
     R: Rng + RngCore + Sized + Clone + Send,
-    P: Eq + PartialEq + Hash + Send + Sync ,
-    A: Eq + PartialEq + Hash + Clone + Send + Sync,
+    P: Eq + PartialEq + Hash + Send + Sync,
+    A: Eq + PartialEq + Hash + Send + Sync + Clone,
     G: Mcts<P, A> + Determinable<P, A, G, R> + Send
 >(game: &G, rng: &R, num_determinizations: usize, num_simulations: usize) -> A {
 
@@ -25,7 +26,6 @@ pub fn ismcts<
     // so, we can pre-calculate the actions, then just copy them into each thread
     let actions = game.actions();
 
-    // yikes type
     let determinization_scores: Arc<Mutex<Determinizations<A, P>>> = Arc::new(Mutex::new(Vec::new()));
 
     thread::scope(|scope| {
@@ -60,6 +60,7 @@ pub fn ismcts<
                             }
                         }
 
+                        // normalize score values, might be a mistake
                         let max = scores.values().fold(0f64, |sum, &val| if sum > val { sum } else { val });
                         scores.iter_mut().for_each(|(_, v)| *v /= max);
 
@@ -72,32 +73,6 @@ pub fn ismcts<
         }
     });
 
-    /*
-    let avg_scores: Vec<Vec<f32>> = actions
-        .iter()
-        .enumerate()
-        .map(|(action_idx, _)| {
-            let player_scores: Vec<f32> = game.players().iter().map(|_| 0f64).collect();
-            determinization_scores.lock().unwrap()
-                .iter()
-                .fold(player_scores, |sum, val| {
-                    sum.iter().zip(&val[action_idx]).map(|(a, b)| {
-                        *a + (*b / num_determinizations as f32)
-                    }).collect()
-                })
-        }).collect();
-
-    let mut diff: Vec<(usize, f32)> = avg_scores.iter().enumerate().map(|scores| {
-        let num_opps = (game.players().len() - 1) as f32;
-        let sum_opps_score = scores.1.iter().enumerate().filter(|(idx, _)| *idx != game.current_player()).map(|(_, e)| e).sum::<f32>();
-        let avg_opps_score = sum_opps_score / num_opps;
-        (scores.0, scores.1[game.current_player()] - avg_opps_score)
-    }).collect();
-
-    diff.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1).unwrap()
-    });
-    */
     game.actions()[0].clone()
 }
 

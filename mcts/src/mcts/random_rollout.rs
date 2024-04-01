@@ -5,7 +5,7 @@ use crate::mcts::Outcome;
 pub fn random_rollout<
     R: Rng + Sized,
     P,
-    A: Send + Clone,
+    A: Clone,
     G: Mcts<P, A> + Clone
 >(game: &G, rng: &mut R) -> Outcome<P> {
     let mut game = game.clone();
