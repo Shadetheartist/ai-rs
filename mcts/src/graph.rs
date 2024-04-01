@@ -1,5 +1,5 @@
 use std::hash::Hash;
-use petgraph::{Directed, Graph};
+use petgraph::{Directed};
 use petgraph::prelude::StableGraph;
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, RngCore, SeedableRng};

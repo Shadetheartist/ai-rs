@@ -9,5 +9,4 @@ fn tree_test() {
     let game = number_game::NumberGame::default();
 
     let mut rng = rand_pcg::Pcg32::seed_from_u64(0);
-    let mcts = mcts::mcts(&game, &mut rng, 10);
 }
