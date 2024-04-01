@@ -7,8 +7,8 @@ use crate::mcts::{Outcome};
 use crate::mcts::Mcts;
 use crate::mcts::random_rollout;
 
-pub trait Determinable<P, A, G: Mcts<P, A>, R: Rng + Sized> {
-    fn determine(&self, rng: &mut R, perspective_player: P) -> G;
+pub trait Determinable<P, A, G: Mcts<P, A>> {
+    fn determine<R: Rng>(&self, rng: &mut R, perspective_player: P) -> G;
 }
 
 type Determinizations<A, P> = Vec<HashMap<A, HashMap<P, f64>>>;
@@ -19,7 +19,7 @@ pub fn ismcts_mt<
     R: Rng + RngCore + Sized + Clone + Send,
     P: Eq + PartialEq + Hash + Send + Sync,
     A: Eq + PartialEq + Hash + Send + Sync + Clone,
-    G: Mcts<P, A> + Determinable<P, A, G, R> + Send
+    G: Mcts<P, A> + Determinable<P, A, G> + Send
 >(game: &G, rng: &R, num_determinizations: usize, num_simulations: usize) -> A {
 
     // actions should be the same between all determinizations

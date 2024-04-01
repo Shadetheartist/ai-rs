@@ -1,13 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::marker::PhantomData;
+use coup_rs::{Action, Coup};
 use eframe::egui;
 use eframe::emath::Pos2;
-use egui::ahash::HashMap;
 use egui_graphs::{DefaultEdgeShape, DefaultNodeShape, Graph, GraphView, SettingsInteraction, SettingsNavigation, SettingsStyle};
 use egui_plot::{Line, PlotPoints};
 use petgraph::{Directed};
 use petgraph::graph::{EdgeIndex};
 use petgraph::prelude::{NodeIndex};
+use serde::Serialize;
+use mcts::{Determinable, GraphEdge, GraphNode, Initializer, ISMCTSParams, ISMCTSPlayerParams};
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -22,7 +27,7 @@ fn main() -> Result<(), eframe::Error> {
             // This gives us image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Box::<MCTSExplorer>::default()
+            Box::<MCTSExplorer<usize, Action, Coup>>::default()
         }),
     )
 }
@@ -42,33 +47,38 @@ struct MCTSParams {
 
 struct MTCTSweepDatum {
     sweep_index: usize,
-    sim_params: MCTSPlayerParams,
+    sim_params: MCTSParams,
     winners: Vec<(usize, i32)>,
 }
 
-struct MCTSExplorer<S, A> {
+struct MCTSExplorer<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
     selected_node_idx: Option<NodeIndex>,
     seed: u64,
     num_sims: usize,
     params: Vec<MCTSPlayerParams>,
-    graph: Option<Graph<S, A, Directed>>,
+    graph: Option<Graph<GraphNode<G>, GraphEdge<A>, Directed>>,
     show_graph: bool,
     sweep_data: Option<Vec<MTCTSweepDatum>>,
+    phantom_p: PhantomData<P>
 }
 
-impl<S, A> MCTSExplorer<S, A> {
+impl<
+    P: Eq + PartialEq + Hash + Send + Sync,
+    A: Eq + PartialEq + Hash + Send + Sync + Clone,
+    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync,
+> MCTSExplorer<P, A, G> {
     fn sim_params(&self) -> MCTSParams {
         MCTSParams {
             seed: self.seed,
             num_sims: self.num_sims,
             sim_players: self.params
-                .iter()
+                .clone()
+                .into_iter()
                 .filter(|p| p.enabled)
-                .map(|p| p.params.clone())
                 .collect(),
         }
     }
-
+    /*
     fn graph_winners(&self) -> Option<Vec<(usize, i32)>> {
         if let Some(graph) = &self.graph {
             let default_map = (0..self.sim_params().sim_players.len()).fold(HashMap::default(), |mut acc, n| {
@@ -93,12 +103,28 @@ impl<S, A> MCTSExplorer<S, A> {
         } else {
             None
         }
-    }
+    }*/
 
-    fn coup_graph(&self) -> Graph<S, A, Directed> {
-        let game_graph = mcts::generate_graph();
+    fn coup_graph(&self) -> Graph<GraphNode<G>, GraphEdge<A>, Directed>
+        where
+            P: Eq + PartialEq + Hash + Send + Sync,
+            A: Eq + PartialEq + Hash + Send + Sync,
+            G: Determinable<P, A, G> + Initializer<P, A, G> + Eq + PartialEq + Send + Sync,
+    {
+        let game_graph = mcts::generate_graph::<P, A, rand_pcg::Lcg128Xsl64, G, G>(ISMCTSParams{
+            seed: self.seed,
+            num_sims: self.num_sims,
+            max_cores: 0,
+            sim_players: vec![
+                ISMCTSPlayerParams { num_determinations: 4, num_simulations_per_action: 10 },
+                ISMCTSPlayerParams { num_determinations: 4, num_simulations_per_action: 10 },
+                ISMCTSPlayerParams { num_determinations: 4, num_simulations_per_action: 10 },
+                ISMCTSPlayerParams { num_determinations: 4, num_simulations_per_action: 10 },
+            ],
+        });
+
         let mut graph = Graph::from(&game_graph);
-
+/*
         let node_indexes: Vec<NodeIndex> = graph.nodes_iter().map(|n| n.0).collect();
 
         node_indexes.iter().for_each(|idx| {
@@ -118,7 +144,7 @@ impl<S, A> MCTSExplorer<S, A> {
             let edge = graph.edge_mut(*idx).unwrap();
             edge.set_label(format!("   {:?}, n={:?}", edge_action.payload().action, edge_action.payload().count));
         });
-
+*/
         graph
     }
 
@@ -129,8 +155,8 @@ impl<S, A> MCTSExplorer<S, A> {
 
         for p in &mut self.params {
             p.enabled = false;
-            p.params.num_simulations_per_action = 4;
-            p.params.num_determinations = 50;
+            p.num_simulations_per_action = 4;
+            p.num_determinations = 50;
         }
 
         self.params[0].enabled = true;
@@ -139,14 +165,14 @@ impl<S, A> MCTSExplorer<S, A> {
 
         for idx in 0..10 {
             self.seed += 1;
-            self.params[0].params.num_simulations_per_action = 1 + idx * 50;
+            self.params[0].num_simulations_per_action = 1 + idx * 50;
 
             let sim_params = self.sim_params();
             self.graph = Some(self.coup_graph());
             data.push(MTCTSweepDatum {
                 sweep_index: idx,
                 sim_params,
-                winners: self.graph_winners().unwrap(),
+                winners: vec![]//self.graph_winners().unwrap(),
             });
         }
 
@@ -157,7 +183,7 @@ impl<S, A> MCTSExplorer<S, A> {
 }
 
 
-impl Default for MCTSExplorer {
+impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, G> {
     fn default() -> Self {
         Self {
             show_graph: true,
@@ -198,11 +224,12 @@ impl Default for MCTSExplorer {
             ],
             graph: None,
             sweep_data: None,
+            phantom_p: Default::default(),
         }
     }
 }
 
-impl MCTSExplorer {
+impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
     fn read_data(&mut self) {
         if let Some(graph) = &self.graph {
             if !graph.selected_nodes().is_empty() {
@@ -213,7 +240,11 @@ impl MCTSExplorer {
     }
 }
 
-impl eframe::App for MCTSExplorer {
+impl<
+    P: Eq + PartialEq + Hash + Send + Sync,
+    A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
+    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync + Debug + Serialize,
+> eframe::App for MCTSExplorer<P, A, G> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.read_data();
 
@@ -236,8 +267,8 @@ impl eframe::App for MCTSExplorer {
             ui.vertical(|vert| {
                 for (idx, param) in &mut self.params.iter_mut().enumerate() {
                     vert.add(egui::Checkbox::new(&mut param.enabled, format!("Player {idx}")));
-                    vert.add(egui::Slider::new(&mut param.params.num_determinations, 1..=240));
-                    vert.add(egui::Slider::new(&mut param.params.num_simulations_per_action, 1..=1000));
+                    vert.add(egui::Slider::new(&mut param.num_determinations, 1..=240));
+                    vert.add(egui::Slider::new(&mut param.num_simulations_per_action, 1..=1000));
                 }
 
                 if vert.button("Simulate").clicked() {
@@ -269,6 +300,7 @@ impl eframe::App for MCTSExplorer {
         });
 
         egui::TopBottomPanel::bottom("bottom_panel").exact_height(500.0).show(ctx, |ui| {
+           /*
             if let Some(winners) = &self.graph_winners() {
                 egui::Grid::new("table").show(ui, |ui| {
                     for (player_idx, _) in winners {
@@ -281,7 +313,7 @@ impl eframe::App for MCTSExplorer {
                     }
                     ui.end_row();
                 });
-            }
+            }*/
 
             if let Some(sweep_data) = &self.sweep_data {
                 egui_plot::Plot::new("plot").show(ui, |ui| {

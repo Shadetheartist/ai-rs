@@ -18,3 +18,4 @@ serde_json = {version = "1.0.114"}
 anyhow = "1.0.80"
 coup-rs = { path = "../../coup-rs"}
 mcts = {path="../mcts"}
+rand_pcg = "0.3.1"

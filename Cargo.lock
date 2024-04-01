@@ -1636,6 +1636,7 @@ dependencies = [
  "env_logger",
  "mcts",
  "petgraph",
+ "rand_pcg",
  "serde",
  "serde_json",
 ]

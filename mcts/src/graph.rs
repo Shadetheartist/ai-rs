@@ -1,5 +1,6 @@
 use std::hash::Hash;
 use petgraph::{Directed, Graph};
+use petgraph::prelude::StableGraph;
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, RngCore, SeedableRng};
 use crate::{Determinable, ismcts_mt};
@@ -19,8 +20,8 @@ pub struct GraphEdge<A: Clone + Eq + PartialEq> {
 
 #[allow(dead_code)]
 fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
-    graph: &mut Graph<GraphNode<S>, GraphEdge<A>, Directed>,
-    nodes: &mut [(NodeIndex, &S)],
+    graph: &mut StableGraph<GraphNode<S>, GraphEdge<A>, Directed>,
+    nodes: &mut Vec<(NodeIndex, S)>,
     state: &S,
 ) -> NodeIndex {
     let node = GraphNode {
@@ -28,11 +29,14 @@ fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     };
 
     let node_index = {
-        let existing = nodes.iter().find(|n| *n.1 == node.state);
+        let existing = nodes.iter().find(|n| n.1 == node.state);
         if let Some(existing) = existing {
             existing.0
         } else {
-            graph.add_node(node.clone())
+            let node_index = graph.add_node(node.clone());
+            nodes.push((node_index, state.clone()));
+
+            node_index
         }
     };
 
@@ -41,7 +45,7 @@ fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
 
 #[allow(dead_code)]
 fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
-    graph: &mut Graph<GraphNode<S>, GraphEdge<A>, Directed>,
+    graph: &mut StableGraph<GraphNode<S>, GraphEdge<A>, Directed>,
     action: A,
     prev_state_idx: NodeIndex,
     new_state_idx: NodeIndex,
@@ -56,26 +60,26 @@ fn add_action_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
 }
 
 pub trait Initializer<P, A: Send, S: Mcts<P, A>> {
-    fn initialize<R: Rng + Sized>(&self, r: &mut R) -> S;
+    fn initialize<R: Rng + Sized>(rng: &mut R) -> S;
 }
 
 #[allow(dead_code)]
 pub fn generate_graph<
     P: Eq + PartialEq + Hash + Send + Sync,
     A: Clone + Eq + PartialEq + Hash + Send + Sync,
-    R: Rng + RngCore + Sized + Clone + Send + SeedableRng,
-    G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G, R>,
+    R: RngCore + SeedableRng + Clone + Send + Sync,
+    G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G>,
     I: Initializer<P, A, G>
 >
-(initializer: &I, sim_params: ISMCTSParams) -> Graph<GraphNode<G>, GraphEdge<A>, Directed> {
-    let mut graph: Graph<GraphNode<G>, GraphEdge<A>, Directed> = Graph::new();
-    let mut nodes: Vec<(NodeIndex, &G)> = Vec::new();
+(sim_params: ISMCTSParams) -> StableGraph<GraphNode<G>, GraphEdge<A>, Directed> {
+    let mut graph: StableGraph<GraphNode<G>, GraphEdge<A>, Directed> = StableGraph::new();
+    let mut nodes: Vec<(NodeIndex, G)> = Vec::new();
 
     for sim_n in 0..sim_params.num_sims {
         let mut not_rng = R::seed_from_u64(sim_params.seed);
         let mut per_sim_rng = R::seed_from_u64(sim_params.seed + (sim_n as u64));
 
-        let game = initializer.initialize(&mut not_rng);
+        let mut game = I::initialize(&mut not_rng);
         let players = game.players();
 
         #[allow(unused_variables)]
@@ -90,9 +94,9 @@ pub fn generate_graph<
             let sim_player = &sim_params.sim_players[current_player_idx];
             let ai_selected_action = ismcts_mt(&game, &per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
 
-            let prev_node_idx = nodes.last().unwrap().0;
+            let prev_node_idx = nodes.last().expect("should be at least one node in place before this point").0;
 
-            let game = game.apply_action(ai_selected_action.clone(), &mut per_sim_rng).unwrap();
+            game = game.apply_action(ai_selected_action.clone(), &mut per_sim_rng).unwrap();
 
             let new_node_idx = add_state_to_graph(&mut graph, &mut nodes, &game);
             add_action_to_graph(&mut graph, ai_selected_action, prev_node_idx, new_node_idx);
