@@ -11,7 +11,7 @@ use egui_plot::{Line, PlotPoints};
 use petgraph::{Directed};
 use petgraph::prelude::{EdgeIndex, NodeIndex};
 use serde::Serialize;
-use mcts::{Determinable, GraphEdge, GraphNode, Initializer, ISMCTSParams, ISMCTSPlayerParams};
+use ai::{Determinable, GraphEdge, GraphNode, Initializer, ISMCTSParams, ISMCTSPlayerParams};
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -44,27 +44,27 @@ struct MCTSParams {
     sim_players: Vec<MCTSPlayerParams>,
 }
 
-struct MTCTSweepDatum {
+struct MTCSSweepDatum {
     sweep_index: usize,
     sim_params: MCTSParams,
     winners: Vec<(usize, i32)>,
 }
 
-struct MCTSExplorer<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
+struct MCTSExplorer<P: Clone, A: Clone + Eq, G: ai::Mcts<P, A> + Eq> {
     selected_node_idx: Option<NodeIndex>,
     seed: u64,
     num_sims: usize,
     params: Vec<MCTSPlayerParams>,
     graph: Option<Graph<GraphNode<G>, GraphEdge<A>, Directed>>,
     show_graph: bool,
-    sweep_data: Option<Vec<MTCTSweepDatum>>,
+    sweep_data: Option<Vec<MTCSSweepDatum>>,
     phantom_p: PhantomData<P>
 }
 
 impl<
     P: Eq + PartialEq + Hash + Send + Sync + Clone,
     A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
-    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync ,
+    G: ai::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync ,
 > MCTSExplorer<P, A, G> {
     fn sim_params(&self) -> MCTSParams {
         MCTSParams {
@@ -110,7 +110,7 @@ impl<
             A: Eq + PartialEq + Hash + Send + Sync + Debug,
             G: Determinable<P, A, G> + Initializer<P, A, G> + Eq + PartialEq + Send + Sync,
     {
-        let game_graph = mcts::generate_graph::<P, A, rand_pcg::Lcg128Xsl64, G, G>(ISMCTSParams{
+        let game_graph = ai::generate_graph::<P, A, rand_pcg::Lcg128Xsl64, G, G>(ISMCTSParams{
             seed: self.seed,
             num_sims: self.num_sims,
             max_cores: 0,
@@ -147,8 +147,8 @@ impl<
         graph
     }
 
-    fn sweep(&mut self) -> Vec<MTCTSweepDatum> {
-        let mut data: Vec<MTCTSweepDatum> = Vec::new();
+    fn sweep(&mut self) -> Vec<MTCSSweepDatum> {
+        let mut data: Vec<MTCSSweepDatum> = Vec::new();
 
         let initial_seed = self.seed;
 
@@ -168,7 +168,7 @@ impl<
 
             let sim_params = self.sim_params();
             self.graph = Some(self.coup_graph());
-            data.push(MTCTSweepDatum {
+            data.push(MTCSSweepDatum {
                 sweep_index: idx,
                 sim_params,
                 winners: vec![]//self.graph_winners().unwrap(),
@@ -182,7 +182,7 @@ impl<
 }
 
 
-impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, G> {
+impl<P: Clone, A: Clone + Eq, G: ai::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, G> {
     fn default() -> Self {
         Self {
             show_graph: true,
@@ -228,7 +228,7 @@ impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer
     }
 }
 
-impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
+impl<P: Clone, A: Clone + Eq, G: ai::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
     fn read_data(&mut self) {
         if let Some(graph) = &self.graph {
             if !graph.selected_nodes().is_empty() {
@@ -242,7 +242,7 @@ impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
 impl<
     P: Eq + PartialEq + Hash + Send + Sync + Clone,
     A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
-    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync + Debug + Serialize,
+    G: ai::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync + Debug + Serialize,
 > eframe::App for MCTSExplorer<P, A, G> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.read_data();

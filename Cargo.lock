@@ -123,6 +123,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ai"
+version = "0.1.0"
+dependencies = [
+ "petgraph",
+ "rand",
+ "rand_pcg",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -858,8 +867,8 @@ dependencies = [
 name = "coup-rs"
 version = "0.1.0"
 dependencies = [
+ "ai",
  "csv",
- "mcts",
  "petgraph",
  "rand",
  "rand_pcg",
@@ -1626,6 +1635,7 @@ dependencies = [
 name = "gui"
 version = "0.1.0"
 dependencies = [
+ "ai",
  "anyhow",
  "coup-rs",
  "eframe",
@@ -1634,7 +1644,6 @@ dependencies = [
  "egui_graphs",
  "egui_plot",
  "env_logger",
- "mcts",
  "petgraph",
  "rand_pcg",
  "serde",
@@ -1895,15 +1904,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "mcts"
-version = "0.1.0"
-dependencies = [
- "petgraph",
- "rand",
- "rand_pcg",
 ]
 
 [[package]]
