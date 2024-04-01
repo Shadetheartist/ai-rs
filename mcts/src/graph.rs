@@ -70,14 +70,14 @@ pub trait Initializer<P, A: Send, S: Mcts<P, A>> {
 }
 
 #[allow(dead_code)]
-pub fn generate_graph<
-    P: Eq + PartialEq + Hash + Send + Sync,
-    A: Clone + Eq + PartialEq + Hash + Send + Sync,
-    R: RngCore + SeedableRng + Clone + Send + Sync,
-    G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G>,
-    I: Initializer<P, A, G>
->
-(sim_params: ISMCTSParams) -> StableGraph<GraphNode<G>, GraphEdge<A>, Directed> {
+pub fn generate_graph<P,A,R,G,I>(sim_params: ISMCTSParams) -> StableGraph<GraphNode<G>, GraphEdge<A>, Directed>
+    where
+        P: Eq + PartialEq + Hash + Send + Sync,
+        A: Clone + Eq + PartialEq + Hash + Send + Sync,
+        R: RngCore + SeedableRng + Clone + Send + Sync,
+        G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G>,
+        I: Initializer<P, A, G>
+{
     let mut graph: StableGraph<GraphNode<G>, GraphEdge<A>, Directed> = StableGraph::new();
     let mut nodes: Vec<(NodeIndex, G)> = Vec::new();
 
