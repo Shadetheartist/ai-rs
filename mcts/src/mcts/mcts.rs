@@ -25,7 +25,7 @@ pub struct VecTree<P, A, G: Mcts<P, A>> {
     phantom_a: PhantomData<A>,
 }
 
-impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
+impl<P: Eq + PartialEq + Hash + Clone, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
     pub fn from_state(state: G) -> Self {
         let mut tree = VecTree {
             current_player: state.current_player(),
@@ -45,6 +45,36 @@ impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
         }
     }
 
+    pub fn best_action(&self) -> Option<A> {
+        if let Some(root) = self.nodes.first() {
+            let best_child = root.children.iter().enumerate().fold(None, |acc: Option<(usize, f64)>, (action_idx, child_node_idx): (usize, &usize)| {
+                let node = &self.nodes[*child_node_idx];
+                let player_value = if let Some(value) = node.value.get(&self.current_player) {
+                    *value
+                } else {
+                    0f64
+                };
+                let avg_value = player_value / node.num_visits;
+
+                if let Some(acc) = acc {
+                    if avg_value > acc.1 {
+                        return Some((action_idx, avg_value));
+                    }
+                }
+
+                // default
+                Some((action_idx, avg_value))
+            });
+
+            if let Some(best_child) = best_child {
+                let actions = root.state.actions();
+                return Some(actions[best_child.0].clone());
+            }
+        }
+
+        None
+    }
+
     pub fn search<R: Rng>(&mut self, rng: &mut R) {
         let mut current_node_idx = 0;
 
@@ -54,34 +84,51 @@ impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
 
         // recursively select an optimal node to expand
         while self.nodes[current_node_idx].is_leaf() == false {
-            current_node_idx = self.select(current_node_idx);
+            current_node_idx = self.select(current_node_idx, rng);
             visited_nodes.push(current_node_idx);
         }
 
-        self.expand(rng, current_node_idx);
-        let new_node_idx = self.select(current_node_idx);
-        visited_nodes.push(new_node_idx);
+        let result = if let Some(outcome) = self.nodes[current_node_idx].state.outcome() {
+            outcome
+        } else {
+            self.expand(current_node_idx, rng);
 
-        let result = random_rollout(&self.nodes[new_node_idx].state, rng);
+            let new_node_idx = self.select(current_node_idx, rng);
+            visited_nodes.push(new_node_idx);
+
+            random_rollout(&self.nodes[new_node_idx].state, rng)
+        };
 
         match result {
-            Outcome::Winner(_) => {}
-            Outcome::Winners(_) => {}
+            Outcome::Winner(winner_player) => {
+                for visited_node_idx in visited_nodes {
+                    self.nodes[visited_node_idx].num_visits += 1.0;
+                    *self.nodes[visited_node_idx].value.entry(winner_player.clone()).or_insert(0f64) += 1.0;
+                }
+            }
+            Outcome::Winners(winner_players) => {
+                for visited_node_idx in visited_nodes {
+                    self.nodes[visited_node_idx].num_visits += 1.0;
+                    for winner_player in &winner_players {
+                        *self.nodes[visited_node_idx].value.entry(winner_player.clone()).or_insert(0f64) += 1.0;
+                    }
+                }
+            }
             Outcome::Escape(_) => {}
         }
 
-        for visited_node_idx in visited_nodes {
-            self.nodes[visited_node_idx].num_visits += 1.0;
-            let current_player = self.nodes[new_node_idx].state.current_player();
-            *self.nodes[visited_node_idx].value.entry(current_player).or_insert(0f64) += 1.0;
-        }
+
     }
 
-    fn expand<R: Rng>(&mut self, rng: &mut R, node_idx: usize) {
+    fn expand<R: Rng>(&mut self, node_idx: usize, rng: &mut R) {
         let actions = {
             let node = &self.nodes[node_idx];
             node.state.actions()
         };
+
+        if actions.len() == 0 {
+            panic!("no actions to expand into")
+        }
 
         for action in actions {
             let node = &self.nodes[node_idx];
@@ -90,13 +137,13 @@ impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
         }
     }
 
-    fn select(&self, node_idx: usize) -> usize {
+    fn select<R: Rng>(&self, node_idx: usize, rng: &mut R) -> usize {
         let node = &self.nodes[node_idx];
 
         let constant_of_exploration = 2f64.sqrt();
 
         let selected = node.children.iter().fold((None, f64::MIN), |acc, child_idx| {
-            let ucb = self.ucbt_value(*child_idx, constant_of_exploration);
+            let ucb = self.ucbt_value(*child_idx, constant_of_exploration, rng);
             if ucb > acc.1 {
                 (Some(*child_idx), ucb)
             } else {
@@ -104,11 +151,19 @@ impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
             }
         });
 
-        selected.0.unwrap()
+        if let Some(selected) = selected.0 {
+            selected
+        } else {
+            panic!("could not select")
+        }
     }
 
-    fn ucbt_value(&self, node_idx: usize, constant_of_exploration: f64) -> f64 {
+    fn ucbt_value<R: Rng>(&self, node_idx: usize, constant_of_exploration: f64, rng: &mut R) -> f64 {
         let node = &self.nodes[node_idx];
+
+        if node.num_visits == 0.0 {
+            return f64::MAX;
+        }
 
         let player_value = if let Some(value) = node.value.get(&self.current_player) {
             *value
@@ -124,8 +179,9 @@ impl<P: Eq + PartialEq + Hash, A: Clone, G: Mcts<P, A>> VecTree<P, A, G> {
         // the second component corresponds to exploration
         let parent_vists = self.parent_visits(node);
         let exploration_component = constant_of_exploration * ((parent_vists + 1.0).ln() / node.num_visits).sqrt();
+        let noise = rng.next_u32() as f64 * 1e-6;
 
-        exploitation_component + exploration_component // potentially add random noise to break ties in unexplored nodes i.e. (+ rand.next_f64() * epsilon)
+        exploitation_component + exploration_component + noise
     }
 
     fn parent_visits(&self, node: &VecTreeNode<P, A, G>) -> f64 {
@@ -194,18 +250,14 @@ impl<P, A: Clone, G: Mcts<P, A>> VecTreeNode<P, A, G> {
 
 pub fn mcts<
     R: Rng + RngCore + Sized,
-    P: Eq + PartialEq + Hash + Send,
-    A: Eq + PartialEq + Hash + Clone,
+    P: Eq + PartialEq + Hash + Clone + Send,
+    A: Eq + PartialEq + Hash + Clone + Debug,
     G: Mcts<P, A>
 >(game: &G, rng: &mut R, num_simulations: usize) -> A {
     let mut tree = VecTree::from_state(game.clone());
 
+    // damn waste of a populated tree after this function closes
     tree.search_n(rng, num_simulations);
 
-    unimplemented!()
+    tree.best_action().expect("an action")
 }
-
-
-
-
-
