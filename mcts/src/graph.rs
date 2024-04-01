@@ -9,6 +9,8 @@ use crate::mcts::{Mcts};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GraphNode<S: Clone + Eq + PartialEq> {
+    pub sim: usize,
+    pub step: usize,
     pub state: S,
 }
 
@@ -23,8 +25,12 @@ fn add_state_to_graph<S: Clone + Eq + PartialEq, A: Clone + Eq + PartialEq>(
     graph: &mut StableGraph<GraphNode<S>, GraphEdge<A>, Directed>,
     nodes: &mut Vec<(NodeIndex, S)>,
     state: &S,
+    sim: usize,
+    step: usize,
 ) -> NodeIndex {
     let node = GraphNode {
+        sim,
+        step,
         state: state.clone(),
     };
 
@@ -85,7 +91,7 @@ pub fn generate_graph<
         #[allow(unused_variables)]
         let mut step = 0usize;
 
-        add_state_to_graph(&mut graph, &mut nodes, &game);
+        add_state_to_graph(&mut graph, &mut nodes, &game, sim_n, step);
 
         step += 1;
 
@@ -98,7 +104,7 @@ pub fn generate_graph<
 
             game = game.apply_action(ai_selected_action.clone(), &mut per_sim_rng).unwrap();
 
-            let new_node_idx = add_state_to_graph(&mut graph, &mut nodes, &game);
+            let new_node_idx = add_state_to_graph(&mut graph, &mut nodes, &game, sim_n, step);
             add_action_to_graph(&mut graph, ai_selected_action, prev_node_idx, new_node_idx);
 
             step += 1;

@@ -5,12 +5,11 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use coup_rs::{Action, Coup};
 use eframe::egui;
-use eframe::emath::Pos2;
+use egui::emath;
 use egui_graphs::{DefaultEdgeShape, DefaultNodeShape, Graph, GraphView, SettingsInteraction, SettingsNavigation, SettingsStyle};
 use egui_plot::{Line, PlotPoints};
 use petgraph::{Directed};
-use petgraph::graph::{EdgeIndex};
-use petgraph::prelude::{NodeIndex};
+use petgraph::prelude::{EdgeIndex, NodeIndex};
 use serde::Serialize;
 use mcts::{Determinable, GraphEdge, GraphNode, Initializer, ISMCTSParams, ISMCTSPlayerParams};
 
@@ -64,8 +63,8 @@ struct MCTSExplorer<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
 
 impl<
     P: Eq + PartialEq + Hash + Send + Sync,
-    A: Eq + PartialEq + Hash + Send + Sync + Clone,
-    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync,
+    A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
+    G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync ,
 > MCTSExplorer<P, A, G> {
     fn sim_params(&self) -> MCTSParams {
         MCTSParams {
@@ -108,7 +107,7 @@ impl<
     fn coup_graph(&self) -> Graph<GraphNode<G>, GraphEdge<A>, Directed>
         where
             P: Eq + PartialEq + Hash + Send + Sync,
-            A: Eq + PartialEq + Hash + Send + Sync,
+            A: Eq + PartialEq + Hash + Send + Sync + Debug,
             G: Determinable<P, A, G> + Initializer<P, A, G> + Eq + PartialEq + Send + Sync,
     {
         let game_graph = mcts::generate_graph::<P, A, rand_pcg::Lcg128Xsl64, G, G>(ISMCTSParams{
@@ -124,7 +123,7 @@ impl<
         });
 
         let mut graph = Graph::from(&game_graph);
-/*
+
         let node_indexes: Vec<NodeIndex> = graph.nodes_iter().map(|n| n.0).collect();
 
         node_indexes.iter().for_each(|idx| {
@@ -135,7 +134,7 @@ impl<
 
             let node = graph.node_mut(*idx).unwrap();
             node.set_label("".to_string());
-            node.set_location(Pos2 { x: (sim * 200) as f32, y: (step * 50 + sim * 10) as f32 });
+            node.set_location(emath::Pos2 { x: (sim * 200) as f32, y: (step * 50 + sim * 10) as f32 });
         });
 
         let edge_indexes: Vec<EdgeIndex> = graph.edges_iter().map(|n| n.0).collect();
@@ -144,7 +143,7 @@ impl<
             let edge = graph.edge_mut(*idx).unwrap();
             edge.set_label(format!("   {:?}, n={:?}", edge_action.payload().action, edge_action.payload().count));
         });
-*/
+
         graph
     }
 

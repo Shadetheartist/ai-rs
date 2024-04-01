@@ -7,13 +7,10 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c68ff6ec-859f-4209-a0b0-1ccd8bc2a158" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/mcts_explorer.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+    <list default="true" id="c68ff6ec-859f-4209-a0b0-1ccd8bc2a158" name="Changes" comment="changed project name">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/gui/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mcts/src/graph.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mcts/src/graph.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mcts/tests/test_mcts.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mcts/tests/test_mcts.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,18 +33,24 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Cargo.Run gui.executor": "Run",
+    "Cargo.Test tree_test.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
     "git-widget-placeholder": "master",
     "last_opened_file_path": "/home/derek/projects/ai-rs",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects.stats": "true",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="Cargo.Test ai-rs">
+  <component name="RunManager" selected="Cargo.Run gui">
     <configuration name="Run gui" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="command" value="run --package gui --bin gui" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -82,6 +85,28 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration name="Test tree_test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="command" value="test --package mcts --test test_mcts tree_test -- --exact" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo.Test tree_test" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="RustProjectSettings">
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
@@ -94,11 +119,24 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1712001139489</updated>
-      <workItem from="1712001140536" duration="62000" />
+      <workItem from="1712001140536" duration="2126000" />
     </task>
+    <task id="LOCAL-00001" summary="changed project name">
+      <option name="closed" value="true" />
+      <created>1712001228357</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1712001228357</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="changed project name" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed project name" />
   </component>
 </project>
