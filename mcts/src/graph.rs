@@ -1,9 +1,10 @@
+use std::fmt::Debug;
 use std::hash::Hash;
 use petgraph::{Directed};
 use petgraph::prelude::StableGraph;
 use petgraph::stable_graph::NodeIndex;
 use rand::{Rng, RngCore, SeedableRng};
-use crate::{Determinable, ismcts_mt};
+use crate::{Determinable, ismcts_mt, mcts};
 use crate::ismcts::{ISMCTSParams};
 use crate::mcts::{Mcts};
 
@@ -72,8 +73,8 @@ pub trait Initializer<P, A: Send, S: Mcts<P, A>> {
 #[allow(dead_code)]
 pub fn generate_graph<P,A,R,G,I>(sim_params: ISMCTSParams) -> StableGraph<GraphNode<G>, GraphEdge<A>, Directed>
     where
-        P: Eq + PartialEq + Hash + Send + Sync,
-        A: Clone + Eq + PartialEq + Hash + Send + Sync,
+        P: Eq + PartialEq + Hash + Send + Sync + Clone,
+        A: Clone + Eq + PartialEq + Hash + Send + Sync + Debug,
         R: RngCore + SeedableRng + Clone + Send + Sync,
         G: Clone + Eq + PartialEq + Mcts<P, A> + Send + Determinable<P, A, G>,
         I: Initializer<P, A, G>
@@ -98,7 +99,7 @@ pub fn generate_graph<P,A,R,G,I>(sim_params: ISMCTSParams) -> StableGraph<GraphN
         loop {
             let current_player_idx = players.iter().enumerate().find(|(_, p)| **p == game.current_player()).unwrap().0;
             let sim_player = &sim_params.sim_players[current_player_idx];
-            let ai_selected_action = ismcts_mt(&game, &per_sim_rng, sim_player.num_determinations, sim_player.num_simulations_per_action);
+            let ai_selected_action = mcts(&game, &mut per_sim_rng, sim_player.num_simulations_per_action);
 
             let prev_node_idx = nodes.last().expect("should be at least one node in place before this point").0;
 

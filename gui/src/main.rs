@@ -50,7 +50,7 @@ struct MTCTSweepDatum {
     winners: Vec<(usize, i32)>,
 }
 
-struct MCTSExplorer<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
+struct MCTSExplorer<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
     selected_node_idx: Option<NodeIndex>,
     seed: u64,
     num_sims: usize,
@@ -62,7 +62,7 @@ struct MCTSExplorer<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> {
 }
 
 impl<
-    P: Eq + PartialEq + Hash + Send + Sync,
+    P: Eq + PartialEq + Hash + Send + Sync + Clone,
     A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
     G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync ,
 > MCTSExplorer<P, A, G> {
@@ -106,7 +106,7 @@ impl<
 
     fn coup_graph(&self) -> Graph<GraphNode<G>, GraphEdge<A>, Directed>
         where
-            P: Eq + PartialEq + Hash + Send + Sync,
+            P: Eq + PartialEq + Hash + Send + Sync + Clone,
             A: Eq + PartialEq + Hash + Send + Sync + Debug,
             G: Determinable<P, A, G> + Initializer<P, A, G> + Eq + PartialEq + Send + Sync,
     {
@@ -182,7 +182,7 @@ impl<
 }
 
 
-impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, G> {
+impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, G> {
     fn default() -> Self {
         Self {
             show_graph: true,
@@ -228,7 +228,7 @@ impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> Default for MCTSExplorer<P, A, 
     }
 }
 
-impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
+impl<P: Clone, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
     fn read_data(&mut self) {
         if let Some(graph) = &self.graph {
             if !graph.selected_nodes().is_empty() {
@@ -240,7 +240,7 @@ impl<P, A: Clone + Eq, G: mcts::Mcts<P, A> + Eq> MCTSExplorer<P, A, G> {
 }
 
 impl<
-    P: Eq + PartialEq + Hash + Send + Sync,
+    P: Eq + PartialEq + Hash + Send + Sync + Clone,
     A: Eq + PartialEq + Hash + Send + Sync + Clone + Debug,
     G: mcts::Mcts<P, A> + Determinable<P, A, G> + Initializer<P, A, G> + Eq +  Send + Sync + Debug + Serialize,
 > eframe::App for MCTSExplorer<P, A, G> {
